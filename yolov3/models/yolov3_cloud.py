@@ -150,7 +150,6 @@ def create_yolov3_modules(config_model):
 
     return module_list
 
-#YOLOV3Cloudのこと
 class YOLOv3(nn.Module):
     def __init__(self, config_model):
         super().__init__()
