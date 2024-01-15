@@ -5,13 +5,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
-# from yolov3.datasets.coco import COCODataset
-from yolov3.datasets.coco_vid import COCODataset
+from yolov3.datasets.coco import COCODataset
 
 from yolov3.utils import utils as utils
-# from yolov3.utils.model import create_model, parse_yolo_weights
-from yolov3.utils.model_edge import create_model, parse_yolo_weights, parse_yolo_weights_edgetail #edgeモデルをインポート
-from yolov3.models.yolov3_edge import resblock #resblockインストール
+from yolov3.utils.model import create_model, parse_yolo_weights
+from yolov3.utils.model_edge import create_model, parse_yolo_weights, parse_yolo_weights_edgetail 
+from yolov3.models.yolov3_edge import resblock 
 
 import pickle
 import matplotlib
@@ -23,41 +22,34 @@ from tqdm import tqdm
 from yolov3.utils.coco_evaluator import *
 
 
-#可視化ツールいんすとーる？
-#from yolov3.log import NET
 
-#引数の定義
 def parse_args():
     # fmt: off
     parser = argparse.ArgumentParser()
-    #データの引数
+    
     parser.add_argument(
         "--dataset_dir", type=Path, default="./data/COCO",
         help="directory path to coco dataset",
     )
-    #アノテーションの引数
+    
     parser.add_argument(
         "--anno_path", type=Path, default="./data/COCO/annotations_trainval2017/annotations/instances_train2017.json",
         help="json filename",
     )
-    #重みの引数（ウェイトファイルか途中まで学習したチェックポイントファイルか）
+   
     parser.add_argument(
-        #"--weights", type=Path, default="weights/darknet53.conv.74",
-        # "--weights", type=Path, default="./weights/yolov3.weights", #yolov3回し始め
-        "--weights", type=Path, default="/home/shunsukeakamatsu/Documents/pytorch_yolov3/train_output_test/ckpt/yolov3-edge_000175.ckpt",
+        --weights", type=Path, default="weights/darknet53.conv.74
         help="path to darknet weights file (.weights) or checkpoint file (.pth)",
     )
-    #コンフィギュレーション（様々な条件設定）ファイルの引数
+
     parser.add_argument(
         #"--config", type=Path, default="config/yolov3_coco.yaml",
         "--config", type=Path, default="./config/yolov3edge_coco.yaml",
         help="path to config file",
     )
-    #GPU
     parser.add_argument(
         "--gpu_id", type=int, default=0,
         help="GPU id to use")
-    #トレインしたデータ（重み）のアウトプット
     parser.add_argument(
         "--save_dir", type=Path, default="train_output_test",
         help="directory where checkpoint files are saved",
@@ -68,7 +60,6 @@ def parse_args():
     return args
 
 
-# batchnormをfreeze
 def remove_sequential(network):
     for layer in network.children():
         # print(type(layer))
@@ -81,44 +72,16 @@ def remove_sequential(network):
                     layer.weight.requires_grad_(False)
                 if hasattr(layer, 'bias'):
                     layer.bias.requires_grad_(False)
-                # layer.training = False
-                # print("bnbnbnbn------------")
+
                 layer.eval()
 
 
 def build_optimizer(config, model):
-    # batch_size = config["train"]["batch_size"]
-    # subdivision = config["train"]["subdivision"]
-    # n_samples_per_iter = batch_size * subdivision  # 1反復あたりのサンプル数
-    # momentum = config["train"]["momentum"]
-    # decay = config["train"]["decay"]
-    # base_lr = config["train"]["lr"] / n_samples_per_iter
-
-    # params = []
-    # for key, value in model.named_parameters():
-    #     if "edgetail" in key:
-    #         weight_decay = decay * n_samples_per_iter if "conv.weight" in key else 0
-    #         print(key)
-    #         params.append({"params": value, "weight_decay": weight_decay})
-
-    # optimizer = torch.optim.SGD(
-    #     params,
-    #     lr=base_lr,
-    # momentum=momentum,
-    # weight_decay=decay * n_samples_per_iter,
-    # )
 
     base_lr = config["train"]["lr"] 
     params = []
 
-    # for key, value in model.named_parameters():
-    #     print(key)
-    #     if "edgetail" in key:
-    #         params.append(value)
-    #         print(key)
-    #     else:
-    #         value.requires_grad = False
-
+    
     for value in model.module_list_share.parameters(): 
         value.requires_grad = False
 
@@ -138,22 +101,7 @@ def build_optimizer(config, model):
 
 
 def build_scheduler(config, optimizer):
-    # burn_in = config["train"]["burn_in"]
-    # steps = config["train"]["steps"]
-
-    # def schedule(i):
-    #     if i < burn_in:
-    #         factor = (i / burn_in) ** 4
-    #     elif i < steps[0]:
-    #         factor = 1.0
-    #     elif i < steps[1]:
-    #         factor = 0.1
-    #     else:
-    #         factor = 0.01
-
-    #     return factor
-
-    # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, schedule)
+    
     factor = config["train"]["factor"]
     steps = config["train"]["steps"]
 
@@ -230,7 +178,7 @@ def train_val(model, dataloader, optimizer, scheduler, device, config, epoch, tr
         # from torchvision.utils import save_image
         # save_image(imgs, "test.jpg")
 
-        # 順伝搬する。
+        
         if train:
             loss = model(imgs, labels)
         else:
@@ -238,7 +186,7 @@ def train_val(model, dataloader, optimizer, scheduler, device, config, epoch, tr
                 loss = model(imgs, labels)
                 
        
-        # 逆伝搬する。
+        
         if train:
             loss.backward()
             optimizer.step()
@@ -281,31 +229,28 @@ def train_val(model, dataloader, optimizer, scheduler, device, config, epoch, tr
 def main():
     args = parse_args()
 
-    # 設定ファイルを読み込む。
+    
     config = utils.load_config(args.config)
     img_size = config["train"]["img_size"]
     batch_size = config["train"]["batch_size"]
     max_epoch = config["train"]["epoch"]
 
-    # Device を作成する。
+    
     device = utils.get_device(gpu_id=args.gpu_id)
     print(device)
 
-    # --weights にチェックポイントが指定された場合は読み込む。
+    
     state = torch.load(args.weights) if args.weights.suffix == ".ckpt" else None
 
-    # モデルを作成する。
     model = create_model(config)
     if state:
-        # --weights に指定されたファイルがチェックポイントの場合、状態を復元する。
         # model.load_state_dict(state["model"])
         print(state["model"])
         model.load_state_dict(state["model"], strict=False)
         print(f"Checkpoint file {args.weights} loaded.")
     else:
-        # --weights に指定されたファイルが Darknet 形式の重みの場合、重みを読み込む。
         parse_yolo_weights(model, args.weights)
-        parse_yolo_weights_edgetail(model, "/home/shunsukeakamatsu/Documents/pytorch_yolov3/weights/yolov3-tiny.weights")
+        parse_yolo_weights_edgetail(model, "/")
         print(f"Darknet weights file {args.weights} loaded.")
 
     t = 0
@@ -316,10 +261,10 @@ def main():
 
     model = model.to(device).train()
 
-    # Optimizer を作成する。
+    
     optimizer = build_optimizer(config, model)
 
-    # Scheduler を作成する。
+   
     scheduler = build_scheduler(config, optimizer)
 
     start_epoch = 1
@@ -327,17 +272,12 @@ def main():
     history = []
 
     if state:
-        # --weights に指定されたファイルがチェックポイントの場合、状態を復元する。
-        # Optimizer の状態を読み込む。
+       
         optimizer.load_state_dict(state["optimizer"])
-        # Scheduler の状態を読み込む。
         scheduler.load_state_dict(state["scheduler"])
-        # 前回のステップの次のステップから再開する
         start_epoch = state["epoch"] + 1
-        # 学習履歴を読み込む。
         history = state["history"]
 
-    # Dataset を作成する。
     train_dataset = COCODataset(
         args.dataset_dir,
         args.anno_path,
@@ -345,7 +285,6 @@ def main():
         augmentation=config["augmentation"],
     )
 
-    # DataLoader を作成する。
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=2, shuffle=True,  pin_memory=True)
 
     val_dataset = COCODataset(
@@ -361,22 +300,7 @@ def main():
         )
     
 
-    """for VID"""
-    # val_dataset = COCODataset(
-    #     args.dataset_dir,
-    #     Path("./ILSVRC2015/COCO/imagenet_vid_val.json"),
-    #     img_size=config["test"]["img_size"],
-    # )
-    # val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=config["test"]["batch_size"], num_workers=2, shuffle=False,  pin_memory=True)
-
-    # # evaluator = COCOEvaluator(
-    # #         args.dataset_dir, Path("./ILSVRC2015/COCO/imagenet_vid_val.json"), img_size=config["test"]["img_size"], batch_size=config["test"]["batch_size"]
-    # #     )
-    # evaluator = COCOEvaluator_vid(
-    #         args.dataset_dir, Path("./ILSVRC2015/COCO/imagenet_vid_val.json"), img_size=config["test"]["img_size"], batch_size=config["test"]["batch_size"]
-    #     )
-    
-    # チェックポイントを保存するディレクトリを作成する。
+  
     os.makedirs(args.save_dir/"ckpt", exist_ok=True)
     os.makedirs(args.save_dir/"history", exist_ok=True)
 
@@ -397,7 +321,6 @@ def main():
         """----------------------------------------------------------------------------------------"""
 
 
-        # 学習過程を記録する。
         lossdict_average['epoch'] = epoch
         lossdict_average['accracy'] = ap50
         for k in lossdict_average_val:
@@ -416,10 +339,8 @@ def main():
         state_dict_path = args.save_dir /"ckpt"/ f"{model_name}_{epoch:06d}.ckpt"
         history_path = args.save_dir /"history"/ f"history_{epoch:06d}.csv"
 
-        # チェックポイントを保存する。
         torch.save(state_dict, state_dict_path)
 
-        # 学習経過を保存する。
         pd.DataFrame(history).to_csv(history_path, index=False)
 
         print(
@@ -427,11 +348,9 @@ def main():
         )
 
 
-        # 学習過程を記録する。
         with open(str(args.save_dir)+'/'+str(epoch).zfill(5)+'.pkl', "wb") as tf:
             pickle.dump(history,tf)
 
-        # graph
         hor = [ item["epoch"] for item in history]
 
         ver_total_train = [item["total"] for item in history]
