@@ -10,7 +10,6 @@ from torchvision import ops
 
 
 def load_config(path):
-    """設定ファイルを読み込む。"""
     with open(path) as f:
         config = yaml.safe_load(f)
 
@@ -18,7 +17,6 @@ def load_config(path):
 
 
 def load_classes(path):
-    """クラス一覧を読み込む。"""
     with open(path) as f:
         class_names = [x.strip() for x in f.read().splitlines()]
 
@@ -26,7 +24,6 @@ def load_classes(path):
 
 
 def get_device(gpu_id=-1):
-    """Device を取得する。"""
     if gpu_id >= 0 and torch.cuda.is_available():
         return torch.device("cuda", gpu_id)
     else:
@@ -74,7 +71,6 @@ def letterbox(img, img_size, jitter=0, random_placing=False):
 
 
 def filter_boxes(output, conf_threshold, iou_threshold):
-    # 閾値以上の箇所を探す。
     keep_rows, keep_cols = (
         (output[:, 5:] * output[:, 4:5] >= conf_threshold).nonzero().T
     )
@@ -90,7 +86,6 @@ def filter_boxes(output, conf_threshold, iou_threshold):
         1,
     )
 
-    # Non Maximum Suppression を適用する。
     nms_filtered = []
     detected_classes = conf_filtered[:, 6].unique()
     for c in detected_classes:
@@ -152,20 +147,14 @@ def encode_bboxes(bboxes, pad_info):
 def postprocess(outputs, conf_threshold, iou_threshold, pad_infos):
     decoded = []
     for output, *pad_info in zip(outputs, *pad_infos):
-        # 矩形の形式を変換する。 (YOLO format -> Pascal VOC format)
         output[:, :4] = yolo_to_pascalvoc(output[:, :4])
 
-        #今回のobjectnessの結果を代入
-        # objectness = output[:, 4:5]
-        #objectness = objectness.tolist()
-        # フィルタリングする。
+     
         output = filter_boxes(output, conf_threshold, iou_threshold)
 
-        # letterbox 処理を行う前の座標に変換する。
         if len(output):
             output[:, :4] = decode_bboxes(output[:, :4], pad_info)
 
-        # デコードする。
         decoded.append(output)
 
     #return decoded
