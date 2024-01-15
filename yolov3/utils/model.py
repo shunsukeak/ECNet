@@ -20,25 +20,7 @@ def conv_initializer(param):
 
 
 def parse_conv_block(module, weights, offset, initialize):
-    """
-    Initialization of conv layers with batchnorm
-    Args:
-        m (Sequential): sequence of layers
-        weights (numpy.ndarray): pretrained weights data
-        offset (int): current position in the weights file
-        initialize (bool): if True, the layers are not covered by the weights file. \
-            They are initialized using darknet-style initialization.
-    Returns:
-        offset (int): current position in the weights file
-        weights (numpy.ndarray): pretrained weights data
-    """
-    # Darknet serializes weights of convolutional layer
-    # with batch normalization as following order.
-    # - bias: (out_ch,)
-    # - gamma: (out_ch,)
-    # - mean: (out_ch,)
-    # - bias: (out_ch,)
-    # - kernel: (out_ch, in_ch, h, w)
+    
     conv, bn, leakey = module
 
     params = [
@@ -68,22 +50,7 @@ def parse_conv_block(module, weights, offset, initialize):
 
 
 def parse_yolo_block(module, weights, offset, initialize):
-    """
-    YOLO Layer (one conv with bias) Initialization
-    Args:
-        m (Sequential): sequence of layers
-        weights (numpy.ndarray): pretrained weights data
-        offset (int): current position in the weights file
-        initialize (bool): if True, the layers are not covered by the weights file. \
-            They are initialized using darknet-style initialization.
-    Returns:
-        offset (int): current position in the weights file
-        weights (numpy.ndarray): pretrained weights data
-    """
-    # Darknet serializes weights of convolutional layer
-    # without batch normalization as following order.
-    # - bias: (out_ch,)
-    # - kernel: (out_ch, in_ch, h, w)
+    
     conv = module._modules["conv"]
 
     for param in [conv.bias, conv.weight]:
@@ -103,12 +70,7 @@ def parse_yolo_block(module, weights, offset, initialize):
 
 
 def parse_yolo_weights(model, weights_path):
-    """
-    Parse YOLO (darknet) pre-trained weights data onto the pytorch model
-    Args:
-        model : pytorch model object
-        weights_path (str): path to the YOLO (darknet) pre-trained weights file
-    """
+  
     with open(weights_path, "rb") as f:
         # skip header
         f.read(20)
@@ -118,10 +80,8 @@ def parse_yolo_weights(model, weights_path):
 
     offset = 0
     initialize = False
-    # print(model)
 
 
-    """changed for edge"""
     for module in model.module_list:
         if module._get_name() == "Sequential":
             # conv / batch norm / leaky LeRU
@@ -141,17 +101,11 @@ def parse_yolo_weights(model, weights_path):
         initialize = offset >= len(weights)
 
 def parse_yolo_weights_edge(model, weights_path):
-    """
-    Parse YOLO (darknet) pre-trained weights data onto the pytorch model
-    Args:
-        model : pytorch model object
-        weights_path (str): path to the YOLO (darknet) pre-trained weights file
-    """
+  
     with open(weights_path, "rb") as f:
         # skip header
         f.read(20)
 
-        # read weights
         weights = np.fromfile(f, dtype=np.float32)
 
     offset = 0
@@ -159,7 +113,6 @@ def parse_yolo_weights_edge(model, weights_path):
     print(model)
 
 
-    """changed for edge"""
     for module in model.module_list_share:
         if module._get_name() == "Sequential":
             # conv / batch norm / leaky LeRU
@@ -192,13 +145,11 @@ def parse_yolo_weights_edge(model, weights_path):
 
 
 
-        # the end of the weights file. turn the flag on
         initialize = offset >= len(weights)
 
 
 
 def create_model(config):
-    # モデルを作成する。
     if config["model"]["name"] == "yolov3":
         model = YOLOv3(config["model"])
     elif config["model"]["name"] == "yolov3-edge":
