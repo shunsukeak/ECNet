@@ -6,18 +6,8 @@ from torch import nn as nn
 from yolov3.models.yolo_layer import YOLOLayer
 
 
-def add_conv(in_ch, out_ch, ksize, stride): #conv(畳み込み)の定義
-    """
-    Add a Conv2d / BatchNorm2d / leaky ReLU block.
-
-    Args:
-        in_ch (int): number of input channels of the convolution layer.
-        out_ch (int): number of output channels of the convolution layer.
-        ksize (int): kernel size of the convolution layer.
-        stride (int): stride of the convolution layer.
-    Returns:
-        stage (Sequential) : Sequential layers composing a convolution block.
-    """
+def add_conv(in_ch, out_ch, ksize, stride): 
+   
     pad = (ksize - 1) // 2
 
     sequential = nn.Sequential()
@@ -38,14 +28,8 @@ def add_conv(in_ch, out_ch, ksize, stride): #conv(畳み込み)の定義
     return sequential
 
 
-class resblock(nn.Module): #YOLOv3出でてくる塊(resblock)
-    """
-    Sequential residual blocks each of which consists of two convolution layers.
-
-    Args:
-        ch (int): number of input and output channels.
-        n_blocks (int): number of residual blocks.
-    """
+class resblock(nn.Module): 
+  
 
     def __init__(self, ch, n_blocks):
         super().__init__()
@@ -98,7 +82,6 @@ def create_yolov3_share_modules(config_model):
     # module_list.append(add_conv(in_ch=128, out_ch=256, ksize=3, stride=1))  # 8 / 8
     # module_list.append(nn.MaxPool2d(kernel_size=2, stride=2))  # 9 / 9
 
-    #YOLOv3の前半のモデル
     module_list.append(add_conv(in_ch=3, out_ch=32, ksize=3, stride=1))  # 0 / 0
     module_list.append(add_conv(in_ch=32, out_ch=64, ksize=3, stride=2))  # 1 / 1
     # 1
@@ -120,12 +103,10 @@ def create_yolov3_edge_modules(config_model):
     module_list = nn.ModuleList()
 
     """"""
-    #YOLOv3とYOLOv3-tinyを接続するためにサイズ合わせ
     # maxpool -> conv stride = 2
     # module_list.append(nn.MaxPool2d(kernel_size=2, stride=2))  # 6
     module_list.append(add_conv(in_ch=256, out_ch=256, ksize=3, stride=2))
     """"""
-    #YOLOv3-tinyの後半モデル
     module_list.append(nn.MaxPool2d(kernel_size=2, stride=2))  # 9 / 9
     module_list.append(add_conv(in_ch=256, out_ch=512, ksize=3, stride=1))  # 10 / 10
     module_list.append(nn.ZeroPad2d((0, 1, 0, 1)))  # / 11
@@ -133,9 +114,7 @@ def create_yolov3_edge_modules(config_model):
 
     module_list.append(add_conv(in_ch=512, out_ch=1024, ksize=3, stride=1))  # 12 / 13
 
-    #
-    # additional layers for YOLOv3
-    #
+    
 
     # A
     module_list.append(add_conv(in_ch=1024, out_ch=256, ksize=1, stride=1))  # 13 / 14
@@ -182,7 +161,6 @@ def create_yolov3_edge_modules_full(config_model):
 
     module_list.append(add_conv(in_ch=128, out_ch=256, ksize=3, stride=1))  # 8 / 8
     
-    #YOLOv3-tinyの後半モデル
     module_list.append(nn.MaxPool2d(kernel_size=2, stride=2))  # 9 / 9
     module_list.append(add_conv(in_ch=256, out_ch=512, ksize=3, stride=1))  # 10 / 10
     module_list.append(nn.ZeroPad2d((0, 1, 0, 1)))  # / 11
@@ -197,7 +175,6 @@ def create_yolov3_edge_modules_full(config_model):
     # A
     module_list.append(add_conv(in_ch=1024, out_ch=256, ksize=1, stride=1))  # 13 / 14
     
-    # B 13*13のYOLO layer
     module_list.append(add_conv(in_ch=256, out_ch=512, ksize=3, stride=1))  # 14 / 15
     module_list.append(YOLOLayer(config_model, layer_no=0, in_ch=512))  # 15, 16 / 16
 
@@ -209,14 +186,12 @@ def create_yolov3_edge_modules_full(config_model):
 
     # concat 19 (128) + 8 (256) = 20 (384)
 
-    # B 26"26のYOLOlayer
     module_list.append(add_conv(in_ch=384, out_ch=256, ksize=3, stride=1))  # 21 / 19
     module_list.append(YOLOLayer(config_model, layer_no=1, in_ch=256))  # 22, 23 / 20
 
     return module_list
 
 
-#YOLOV3edgeのこと
 class YOLOv3(nn.Module):
     def __init__(self, config_model):
         super().__init__()
@@ -227,13 +202,10 @@ class YOLOv3(nn.Module):
         self.module_list_dummy = create_yolov3_edge_modules_full(config_model) #YOLOv3-tinyの後半
         self.module_list_edgetail = nn.ModuleList()
         """"""
-        #YOLOv3とYOLOv3-tinyを接続するためにサイズ合わせ
-        # maxpool -> conv stride = 2
-        # module_list.append(nn.MaxPool2d(kernel_size=2, stride=2))  # 6
         self.connect = add_conv(in_ch=256, out_ch=256, ksize=3, stride=2)
         """"""
         
-    def forward(self, x, labels=None, usecloud=False): #入力から出力へ順伝搬
+    def forward(self, x, labels=None, usecloud=False): 
         train = labels is not None
         self.loss_dict = defaultdict(float)
 
@@ -250,7 +222,6 @@ class YOLOv3(nn.Module):
                 layers.append(x)
                 # layers.append(None)
 
-            #feature_edge_headに前半途中までの結果を代入
             feature_edge_head = torch.clone(x)
 
 
