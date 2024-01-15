@@ -3,19 +3,10 @@ from pathlib import Path
 
 import torch
 from yolov3.utils import utils as utils
-# from yolov3.utils.coco_evaluator import COCOEvaluator2
 from yolov3.utils.coco_evaluator import *
-# from yolov3.utils.model import create_model, parse_yolo_weights
-# from yolov3.utils.model_edge import create_model, parse_yolo_weights
 from yolov3.utils.model import create_model, parse_yolo_weights, parse_yolo_weights_edge
 
 
-#import time
-#torch.cuda.synchronize()
-#start = time.time()
-
-#with torch.no_grad():
-#  out = model_gpu(input_batch_gpu) maybe no need
 
 
 def parse_args():
